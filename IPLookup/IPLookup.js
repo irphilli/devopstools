@@ -38,7 +38,8 @@ function runIpLookup(hostname, lookupIp, callback) {
       ip: lookupIp,
       domain: null,
       location: null,
-      organization: null
+      organization: null,
+      private: false
    };
    if (hostname != null) {
       var domainInfo = parseDomain(hostname);
@@ -57,6 +58,10 @@ function runIpLookup(hostname, lookupIp, callback) {
    exec("unxz -fk " + db + ".xz", function(err) {
       if (err) {
          console.log("Could not look up IP");
+         if (runCallback)
+            callback(null, result);
+         else
+            runCallback = true;
          return;
       }
 
