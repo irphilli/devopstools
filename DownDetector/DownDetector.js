@@ -1,5 +1,3 @@
-console.log("Loading Function");
-
 var http = require("http");
 var https = require("https");
 var url = require('url');
@@ -23,7 +21,7 @@ exports.handler = function(event, context, callback) {
          callback(event.host + " returned a bad status code: " + statusCode);
          return;
       }
-      callback(null);
+      callback(null, statusCode);
    });
 	req.on("error", function (err) {
       callback(err.reason);

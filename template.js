@@ -1,5 +1,3 @@
-console.log("Loading Function");
-
 exports.handler = function(event, context, callback) {
 };
 
