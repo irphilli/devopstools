@@ -1,5 +1,3 @@
-console.log("Loading Function");
-
 var whois = require("whois");
 var geoip = require("geoip2");
 var ip = require("ip");
