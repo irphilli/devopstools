@@ -5,6 +5,11 @@ var BigInteger = require('jsbn').BigInteger;
 
 exports.handler = function(event, context, callback) {
    var address;
+   
+   if (event.address == null) {
+      callback("Bad address or netmask");
+      return;
+   }
 
    address = new Address4(event.address);
    if (address.isValid()) {
@@ -25,7 +30,7 @@ function calculateV4(address, callback) {
    var ip = address.addressMinusSuffix;
    var prefixSize = address.subnetMask;
 
-   if (prefixSize == 0) {
+   if (prefixSize === 0) {
       callback("Bad netmask");
       return;
    }
@@ -59,7 +64,7 @@ function calculateV4(address, callback) {
 
 function calculateV6(address, callback) {
    var numberOfHosts = address.endAddress().getBits().subtract(address.startAddress().getBits());
-   numberOfHosts = numberOfHosts.add(new BigInteger('1')).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");;
+   numberOfHosts = numberOfHosts.add(new BigInteger('1')).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
    var result = {
       ipv4: false,
