@@ -18,7 +18,7 @@ exports.handler = function(event, context, callback) {
       var statusCode = res.statusCode;
       if (statusCode >= 400) {
          var result = {
-            host: options.host,
+            host: urlInfo.protocol + "://" + urlInfo.host,
             up: false,
             reason: "bad status code (" + statusCode + ")"
          };
@@ -27,7 +27,7 @@ exports.handler = function(event, context, callback) {
       }
 
       var result = {
-         host: options.host,
+         host: urlInfo.protocol + "://" + urlInfo.host,
          up: true,
          statusCode: statusCode
       };
@@ -35,7 +35,7 @@ exports.handler = function(event, context, callback) {
    });
    req.on("error", function (err) {
       var result = {
-         host: options.host,
+         host: urlInfo.protocol + "://" + urlInfo.host,
          up: false,
          reason: err.syscall + " failed with code " + err.code
       };
