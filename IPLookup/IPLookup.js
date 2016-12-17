@@ -11,12 +11,18 @@ exports.handler = function(event, context, callback) {
    var host = event.host;
 
    if (ip.isV4Format(host) || ip.isV6Format(host)) {
-      dns.reverse(host, function(err, hostname) {
-         if (err)
-            hostname = null;
-         hostname = hostname[0];
-         runIpLookup(hostname, host, callback);
-      });
+      try {
+         dns.reverse(host, function(err, hostname) {
+            if (err)
+               hostname = null;
+            if (hostname != null)
+               hostname = hostname[0];
+            runIpLookup(hostname, host, callback);
+         });
+      }
+      catch (err) {
+         runIpLookup(null, host, callback);
+      }
    }
    else {
       dns.lookup(host, function(err, ip) {
@@ -53,9 +59,10 @@ function runIpLookup(hostname, lookupIp, callback) {
       return;
    }
 
-   exec("unxz -fk " + db + ".xz", function(err) {
+   exec("xz -dc " + db + ".xz > /tmp/" + db, function(err) {
       if (err) {
          console.log("Could not look up IP");
+         console.log(err);
          if (runCallback)
             callback(null, result);
          else
@@ -63,9 +70,17 @@ function runIpLookup(hostname, lookupIp, callback) {
          return;
       }
 
-      geoip.init(db); 
+      geoip.init("/tmp/" + db); 
       geoip.lookupSimple(lookupIp, function (err, data) {
-         result.location = (err) ? null : data.city + ", " + data.subdivision + ", " + data.country;
+         if (!err) {
+            result.location = "";
+            if (data.city)
+               result.location = data.city + ", ";
+            if (data.subdivision)
+               result.location += data.subdivision + ", ";
+            result.location += data.country;
+         }
+            
          if (runCallback)
             callback(null, result);
          else
@@ -84,13 +99,18 @@ function runIpLookup(hostname, lookupIp, callback) {
    });
 };
 
+/*
 var event = {
 //   host: "104.20.69.216"
 //   host: "98.139.183.24"
 //   host: "127.0.0.1"
-   host: "experts-exchange.com"
+//   host: "10.10.0.1"
+//   host: "experts-exchange.com"
+   host: "a"
+//   host: "2607:f8b0:4005:804::200e"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
    console.log(result);
 });
+*/
