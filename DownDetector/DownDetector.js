@@ -16,24 +16,39 @@ exports.handler = function(event, context, callback) {
 
    var req = connector.request(options, function(res) {
       var statusCode = res.statusCode;
-      if (statusCode >= 400)
-      {
-         callback(event.host + " returned a bad status code: " + statusCode);
+      if (statusCode >= 400) {
+         var result = {
+            up: false,
+            reason: "bad status code (" + statusCode + ")"
+         };
+         callback(null, result);
          return;
       }
-      callback(null, statusCode);
+
+      var result = {
+         up: true,
+         statusCode: statusCode
+      };
+      callback(null, result);
    });
-	req.on("error", function (err) {
-      callback(err.reason);
+   req.on("error", function (err) {
+      var result = {
+         up: false,
+         reason: err.syscall + " failed with code " + err.code
+      };
+      callback(null, result);
    });
-	req.end();
+   req.end();
 };
 
+/*
 var event = {
-   host: "https://www.experts-exchange.com/test.html"
+   host: "a"
+//   host: "https://www.experts-exchange.com/test.html"
 //   host: "http://experts-exchange-437318971.us-east-1.elb.amazonaws.com"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
    console.log(result);
 });
+*/
