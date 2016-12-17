@@ -1,10 +1,10 @@
-var AWS = require("aws-sdk");
 var whois = require("whois");
 var geoip = require("geoip2");
 var ip = require("ip");
 var dns = require("dns");
 var exec = require("child_process").exec;
 var parseDomain = require("parse-domain");
+var exec = require("child_process").exec;
 
 var bucket = "ittools.redsrci.com";
 var db = "GeoIP2-City.mmdb";
@@ -61,23 +61,15 @@ function runIpLookup(hostname, lookupIp, callback) {
       return;
    }
 
-   var s3 = new AWS.S3();
-   var params = {
-      Bucket: bucket,
-      Key: db
-   };
-   var file = require('fs').createWriteStream('/tmp/' + db);
-   var stream = s3.getObject(params).createReadStream().pipe(file);
-
-   stream.on("error", function() {
-      console.log("Could not look up IP");
-      if (runCallback)
-         callback(null, result);
-      else
-         runCallback = true;
-   });
-
-   stream.on("finish", function() {
+   exec("aws s3 cp s3://" + bucket + "/" + db + " /tmp/" + db, function (err) {
+      if (err) {
+         console.log("Could not look up IP (s3 get failed)");
+         if (runCallback)
+            callback(null, result);
+         else
+            runCallback = true;
+         return;
+      }
       geoip.init("/tmp/" + db); 
       geoip.lookupSimple(lookupIp, function (err, data) {
          if (!err) {
