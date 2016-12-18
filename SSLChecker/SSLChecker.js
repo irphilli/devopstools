@@ -1,6 +1,7 @@
 var https = require("https");
 var sslinfo = require("sslinfo");
 var exec = require("child_process").exec;
+var pemtools = require('pemtools');
 
 var attrs = {
    v2: 1,
@@ -14,6 +15,21 @@ for (var key in attrs) {
    allAttrs += attrs[key];
 }
 
+var months = [
+   "January",
+   "February",
+   "March",
+   "April",
+   "May",
+   "June",
+   "July",
+   "August",
+   "September",
+   "October",
+   "November",
+   "December"
+];
+
 exports.handler = function(event, context, callback) {
    var host = event.host;
    var port = 443;
@@ -24,7 +40,7 @@ exports.handler = function(event, context, callback) {
       method: 'GET'
    };
    var req = https.request(options, function(res) {
-      var certificateInfo = res.connection.getPeerCertificate();
+      var certificateInfo = getCertInfo(res.connection.getPeerCertificate(true));
       checkSSL(host, port, false, false, true, certificateInfo, callback);
    });
    req.on("error", function (err) {
@@ -35,6 +51,42 @@ exports.handler = function(event, context, callback) {
    });
    req.end();
 };
+
+function getCertInfo(rawCertificateInfo) {
+   var result = {};
+
+   // Alternate names
+   if (rawCertificateInfo.subjectaltname) {
+      result.altnames = [];
+      rawCertificateInfo.subjectaltname.split(",").forEach(function(item) {
+         result.altnames.push(item.replace(/^ ?DNS:/, ""));
+      });
+   }
+
+   var certs = [];
+
+   var currentCert = rawCertificateInfo;
+   do
+   {
+      var cert = {};
+
+      var from = new Date(currentCert.valid_from);
+      var to = new Date(currentCert.valid_to);
+
+      cert.from = months[from.getUTCMonth()] + " " + from.getUTCDate() + ", " + from.getUTCFullYear();
+      cert.to = months[to.getUTCMonth()] + " " + to.getUTCDate() + ", " + to.getUTCFullYear();
+      cert.subject = currentCert.subject;
+      cert.issuer = currentCert.issuer;
+      cert.pem = pemtools(currentCert.raw, "CERTIFICATE").pem
+      cert.fingerprint = currentCert.fingerprint;
+      cert.serialNumber = currentCert.serialNumber.replace(/..\B/g, '$&:');
+      certs.push(cert);
+
+      currentCert = currentCert.issuerCertificate;
+   } while (currentCert != currentCert.issuerCertificate);
+   result.certs = certs;
+   return result;
+}
 
 function checkSSL(host, port, expired, notYetValid, chainValid, certificateInfo, callback) {
    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -59,8 +111,7 @@ function checkSSL(host, port, expired, notYetValid, chainValid, certificateInfo,
 
    if (certificateInfo == null) {
       var req = https.request(options, function(res) {
-         var certificateInfo = res.connection.getPeerCertificate();
-         console.log(certificateInfo);
+         result.certificateInfo = getCertInfo(res.connection.getPeerCertificate(true));
 
          completedAttrs += attrs.https;
          if (completedAttrs == allAttrs)
@@ -75,8 +126,8 @@ function checkSSL(host, port, expired, notYetValid, chainValid, certificateInfo,
       req.end();
    }
    else {
+      result.certificateInfo = certificateInfo;
       completedAttrs += attrs.https;
-      console.log(certificateInfo);
    }
 
    sslinfo.getServerResults(options).
@@ -127,10 +178,11 @@ function checkSSL(host, port, expired, notYetValid, chainValid, certificateInfo,
 
 var event = {
 //   host: "www.experts-exchange.com"
+   host: "community.spiceworks.com"
 //   host: "expired.badssl.com"
 //   host: "self-signed.badssl.com"
 //   host: "incomplete-chain.badssl.com"
-   host: "untrusted-root.badssl.com"
+//   host: "untrusted-root.badssl.com"
 //   host: "revoked.badssl.com"
 };
 exports.handler(event, null, function(err, result) {
