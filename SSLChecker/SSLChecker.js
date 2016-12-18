@@ -15,6 +15,8 @@ for (var key in attrs) {
    allAttrs += attrs[key];
 }
 
+var portMax = 65535;
+
 var months = [
    "January",
    "February",
@@ -31,8 +33,22 @@ var months = [
 ];
 
 exports.handler = function(event, context, callback) {
-   var host = event.host;
-   var port = 443;
+   var host;
+   var port;
+
+   if (event.host.includes(":")) {
+      var tokens = event.host.split(":");
+      host = tokens[0];
+      port = tokens[1];
+      if (isNaN(port) || port < 0 || port > portMax) {
+         callback("Invalid port number.");
+         return;
+      }
+   }
+   else {
+      host = event.host;
+      port = 443;
+   }
 
    var options = {
       host: host,
