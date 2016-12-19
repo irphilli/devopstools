@@ -1,6 +1,6 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-var https = require("https");
+var tls = require("tls");
 var exec = require("child_process").exec;
 var pemtools = require('pemtools');
 var fs = require('fs');
@@ -139,35 +139,13 @@ function checkSSL(host, port, callback) {
    var error = false;
    var completedAttrs = 0;
 
-   var options = {
-      host: host,
-      port: port,
-      method: 'GET'
-   };
-
-   var req = https.request(options);
-   req.on("response", function(res) {
-      result.certificateInfo = getCertInfo(host, res.connection.getPeerCertificate(true));
-
-      completedAttrs += attrs.https;
-      if (completedAttrs == allAttrs)
-         callback(null, result);
-   });
-   req.on("error", function(err) {
-      if (!error) {
-         error = true;
-         callback("Could not connect to " + host + ":" + port);
-      }
-   });
-   req.end();
-
    exec("echo | " + sslscan + " " + host + ":" + port, function(err, stdout, stderr) {
       if (err) {
          if (!error) {
             error = true;
             callback("Could not connect to " + host + ":" + port);
-            return;
          }
+         return;
       }
 
       parseString(stdout, function (err, res) {
@@ -175,8 +153,8 @@ function checkSSL(host, port, callback) {
             if (!error) {
                error = true;
                callback("Could not connect to " + host + ":" + port);
-               return;
             }
+            return;
          }
 
          var ciphers = new Set();
@@ -190,7 +168,20 @@ function checkSSL(host, port, callback) {
          if (completedAttrs == allAttrs)
             callback(null, result);
       });
+   });
 
+   var socket = tls.connect(port, host, function() {
+      result.certificateInfo = getCertInfo(host, socket.getPeerCertificate(true));
+      socket.end();
+      completedAttrs += attrs.https;
+      if (completedAttrs == allAttrs)
+         callback(null, result);
+   });
+   socket.on("error", function() {
+      if (!error) {
+         error = true;
+         callback("Could not connect to " + host + ":" + port);
+      }
    });
 };
 
