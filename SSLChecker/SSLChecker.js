@@ -74,7 +74,7 @@ function getCertInfo(host, rawCertificateInfo) {
    }
 
    // Check that cert matches
-   var check = result.altnames.slice(0);
+   var check = (result.altnames) ? result.altnames.slice(0) : [];
    if (check.indexOf(rawCertificateInfo.subject.CN) == -1) {
       check.add(rawCertificateInfo.subject.CN);
    }
@@ -145,14 +145,15 @@ function checkSSL(host, port, callback) {
       method: 'GET'
    };
 
-   var req = https.request(options, function(res) {
+   var req = https.request(options);
+   req.on("response", function(res) {
       result.certificateInfo = getCertInfo(host, res.connection.getPeerCertificate(true));
 
       completedAttrs += attrs.https;
       if (completedAttrs == allAttrs)
          callback(null, result);
    });
-   req.on("error", function (err) {
+   req.on("error", function(err) {
       if (!error) {
          error = true;
          callback("Could not connect to " + host + ":" + port);
@@ -195,8 +196,8 @@ function checkSSL(host, port, callback) {
 
 /*
 var event = {
-   host: "wrong.host.badssl.com"
-//   host: "www.experts-exchange.com"
+//   host: "wrong.host.badssl.com"
+   host: "www.experts-exchange.com"
 //   host: "community.spiceworks.com"
 //   host: "fancyssl.hboeck.de"
 //   host: "expired.badssl.com"
