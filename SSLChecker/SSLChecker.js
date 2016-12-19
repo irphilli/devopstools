@@ -1,13 +1,16 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 var https = require("https");
-var sslinfo = require("sslinfo");
 var exec = require("child_process").exec;
 var pemtools = require('pemtools');
+var fs = require('fs');
+var parseString = require('xml2js').parseString;
+
+var cacertFile = "/etc/ssl/certs/ca-bundle.crt";
 
 var attrs = {
-   v2: 1,
-   v3: 2,
-   cert: 4,
-   https: 8
+   cert: 1,
+   https: 2
 };
 
 var allAttrs = 0;
@@ -32,6 +35,8 @@ var months = [
    "December"
 ];
 
+var sslscan = "./sslscan --no-fallback --no-renegotiation --no-compression --no-heartbleed --xml=-";
+
 exports.handler = function(event, context, callback) {
    var host;
    var port;
@@ -49,27 +54,15 @@ exports.handler = function(event, context, callback) {
       host = event.host;
       port = 443;
    }
-
-   var options = {
-      host: host,
-      port: port,
-      method: 'GET'
-   };
-   var req = https.request(options, function(res) {
-      var certificateInfo = getCertInfo(res.connection.getPeerCertificate(true));
-      checkSSL(host, port, false, false, true, certificateInfo, callback);
-   });
-   req.on("error", function (err) {
-      var expired = (err.code == "CERT_HAS_EXPIRED");
-      var notYetValid = (err.code == "CERT_NOT_YET_VALID");
-      var chainValid = expired || notYetValid;
-      checkSSL(host, port, expired, notYetValid, chainValid, null, callback);
-   });
-   req.end();
+   checkSSL(host, port, callback);
 };
 
 function getCertInfo(rawCertificateInfo) {
-   var result = {};
+   var result = {
+      trusted: false,
+      expired: false,
+      invalid: false
+   };
 
    // Alternate names
    if (rawCertificateInfo.subjectaltname) {
@@ -82,12 +75,18 @@ function getCertInfo(rawCertificateInfo) {
    var certs = [];
 
    var currentCert = rawCertificateInfo;
-   do
+   var now = Date.now();
+   while (true)
    {
       var cert = {};
 
       var from = new Date(currentCert.valid_from);
       var to = new Date(currentCert.valid_to);
+
+      if (to < now)
+         result.expired = true;
+      if (from > now)
+         result.invalid = true;
 
       cert.from = months[from.getUTCMonth()] + " " + from.getUTCDate() + ", " + from.getUTCFullYear();
       cert.to = months[to.getUTCMonth()] + " " + to.getUTCDate() + ", " + to.getUTCFullYear();
@@ -98,22 +97,27 @@ function getCertInfo(rawCertificateInfo) {
       cert.serialNumber = currentCert.serialNumber.replace(/..\B/g, '$&:');
       certs.push(cert);
 
+      if (!currentCert.issuerCertificate)
+         break;
+
+      if (currentCert == currentCert.issuerCertificate) {
+         var cacerts = fs.readFileSync(cacertFile, "utf8");
+         result.trusted = cacerts.includes(cert.pem);
+         break;
+      }
       currentCert = currentCert.issuerCertificate;
-   } while (currentCert != currentCert.issuerCertificate);
+   }
    result.certs = certs;
    return result;
 }
 
-function checkSSL(host, port, expired, notYetValid, chainValid, certificateInfo, callback) {
-   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
+function checkSSL(host, port, callback) {
    var result = {
-      expired: expired,
-      notYetValid: notYetValid,
-      chainValid: chainValid,
-      tls1: false,
-      tls1_1: false,
-      tls1_2: false
+      "TLSv1.0": false,
+      "TLSv1.1": false,
+      "TLSv1.2": false,
+      "SSLv2": false,
+      "SSLv3": false
    }; 
 
    var error = false;
@@ -125,76 +129,59 @@ function checkSSL(host, port, expired, notYetValid, chainValid, certificateInfo,
       method: 'GET'
    };
 
-   if (certificateInfo == null) {
-      var req = https.request(options, function(res) {
-         result.certificateInfo = getCertInfo(res.connection.getPeerCertificate(true));
+   var req = https.request(options, function(res) {
+      result.certificateInfo = getCertInfo(res.connection.getPeerCertificate(true));
 
-         completedAttrs += attrs.https;
-         if (completedAttrs == allAttrs)
-            callback(null, result);
-      });
-      req.on("error", function (err) {
+      completedAttrs += attrs.https;
+      if (completedAttrs == allAttrs)
+         callback(null, result);
+   });
+   req.on("error", function (err) {
+      if (!error) {
+         error = true;
+         callback("Could not connect to " + host + ":" + port);
+      }
+   });
+   req.end();
+
+   exec("echo | " + sslscan + " " + host + ":" + port, function(err, stdout, stderr) {
+      if (err) {
          if (!error) {
             error = true;
             callback("Could not connect to " + host + ":" + port);
+            return;
          }
-      });
-      req.end();
-   }
-   else {
-      result.certificateInfo = certificateInfo;
-      completedAttrs += attrs.https;
-   }
+      }
 
-   sslinfo.getServerResults(options).
-      done(function(res) {
-         var ciphers = new Set();
-         Object.keys(res.ciphers).forEach(function(item) {
-            if (res.ciphers[item].enabled.length > 0) {
-               if (item == "TLSv1_method")
-                  result.tls1 = true;
-               else if (item == "TLSv1_1_method")
-                  result.tls1_1 = true;
-               else if (item == "TLSv1_2_method")
-                  result.tls1_2 = true;
+      parseString(stdout, function (err, res) {
+         if (err) {
+            if (!error) {
+               error = true;
+               callback("Could not connect to " + host + ":" + port);
+               return;
             }
-            res.ciphers[item].enabled.forEach(function(cipher) {
-               ciphers.add(cipher);
-            });
-         });
+         }
 
-         result.ciphers = Array.from(ciphers);
+         var ciphers = new Set();
+         res.document.ssltest[0].cipher.forEach(function(item) {
+            ciphers.add(item.$.cipher);
+            result[item.$.sslversion] = true;
+         });
+         result.ciphers = Array.from(ciphers).sort();
 
          completedAttrs += attrs.cert;
          if (completedAttrs == allAttrs)
             callback(null, result);
-      },
-      function(err) {
-         if (!error) {
-            error = true;
-            callback("Could not connect to " + host + ":" + port);
-         }
-      }
-   );
+      });
 
-   exec("echo | openssl s_client -connect " + host + ":" + port + " -ssl2", function(err) {
-      result.ssl2 = (err == null);
-      completedAttrs += attrs.v2;
-      if (completedAttrs == allAttrs)
-         callback(null, result);
-   });
-
-   exec("echo | openssl s_client -connect " + host + ":" + port + " -ssl3", function(err) {
-      result.ssl3 = (err == null);
-      completedAttrs += attrs.v3;
-      if (completedAttrs == allAttrs)
-         callback(null, result);
    });
 };
 
 var event = {
-//   host: "www.experts-exchange.com"
-   host: "community.spiceworks.com"
+//   host: "wrong.host.badssl.com"
+   host: "www.experts-exchange.com"
+//   host: "community.spiceworks.com"
+//   host: "fancyssl.hboeck.de"
 //   host: "expired.badssl.com"
 //   host: "self-signed.badssl.com"
 //   host: "incomplete-chain.badssl.com"
