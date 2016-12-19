@@ -57,11 +57,12 @@ exports.handler = function(event, context, callback) {
    checkSSL(host, port, callback);
 };
 
-function getCertInfo(rawCertificateInfo) {
+function getCertInfo(host, rawCertificateInfo) {
    var result = {
       trusted: false,
       expired: false,
-      invalid: false
+      invalid: false,
+      matches: false
    };
 
    // Alternate names
@@ -71,6 +72,21 @@ function getCertInfo(rawCertificateInfo) {
          result.altnames.push(item.replace(/^ ?DNS:/, ""));
       });
    }
+
+   // Check that cert matches
+   var check = result.altnames.slice(0);
+   if (check.indexOf(rawCertificateInfo.subject.CN) == -1) {
+      check.add(rawCertificateInfo.subject.CN);
+   }
+   check.forEach(function(item) {
+      item = item.replace(/\./g, "\\.");
+      item = item.replace(/^\*/, "[^\\.]*");
+      item = "^" + item;
+      var regexp = new RegExp(item);
+
+      if (host.match(regexp))
+         result.matches = true;
+   });
 
    var certs = [];
 
@@ -130,7 +146,7 @@ function checkSSL(host, port, callback) {
    };
 
    var req = https.request(options, function(res) {
-      result.certificateInfo = getCertInfo(res.connection.getPeerCertificate(true));
+      result.certificateInfo = getCertInfo(host, res.connection.getPeerCertificate(true));
 
       completedAttrs += attrs.https;
       if (completedAttrs == allAttrs)
@@ -177,9 +193,10 @@ function checkSSL(host, port, callback) {
    });
 };
 
+/*
 var event = {
-//   host: "wrong.host.badssl.com"
-   host: "www.experts-exchange.com"
+   host: "wrong.host.badssl.com"
+//   host: "www.experts-exchange.com"
 //   host: "community.spiceworks.com"
 //   host: "fancyssl.hboeck.de"
 //   host: "expired.badssl.com"
@@ -192,3 +209,4 @@ exports.handler(event, null, function(err, result) {
    console.log(err);
    console.log(result);
 });
+*/
