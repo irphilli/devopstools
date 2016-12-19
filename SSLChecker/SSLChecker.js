@@ -2,6 +2,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 var tls = require("tls");
 var exec = require("child_process").exec;
+var execSync = require("child_process").execSync;
 var pemtools = require('pemtools');
 var fs = require('fs');
 var parseString = require('xml2js').parseString;
@@ -92,6 +93,8 @@ function getCertInfo(host, rawCertificateInfo) {
 
    var currentCert = rawCertificateInfo;
    var now = Date.now();
+   var versionRegEx = /Version: ([0-9]+)/;
+   var signatureRegEx = /Signature Algorithm: ([0-9a-z\-]+)/i;
    while (true)
    {
       var cert = {};
@@ -112,6 +115,23 @@ function getCertInfo(host, rawCertificateInfo) {
       cert.fingerprint = currentCert.fingerprint;
       cert.serialNumber = currentCert.serialNumber.replace(/..\B/g, '$&:');
       certs.push(cert);
+
+      try
+      {
+         var stdout = execSync("echo \"" + cert.pem + "\" | openssl x509 -noout -text").toString();
+         var versionMatch = stdout.match(versionRegEx);
+         if (versionMatch) {
+            cert.version = versionMatch[1];
+         }
+
+         var signatureMatch = stdout.match(signatureRegEx);
+         if (signatureMatch) {
+            cert.signatureAlgoritm = signatureMatch[1];
+         }
+      }
+      catch (err) {
+         // Ignore
+      }
 
       if (!currentCert.issuerCertificate)
          break;
