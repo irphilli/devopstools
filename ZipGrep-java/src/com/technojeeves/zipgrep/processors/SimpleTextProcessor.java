@@ -32,7 +32,7 @@ public class SimpleTextProcessor implements IProcessor {
             Matcher m = pattern.matcher(line);
 
             if (m.matches()) {
-                writer.printf(String.format(FOUND_FORMAT_STRING, pathPrefix, nestedName, lineNumber, line));
+                writer.printf(FOUND_FORMAT_STRING, pathPrefix, nestedName, lineNumber, line);
             }
         }
     }

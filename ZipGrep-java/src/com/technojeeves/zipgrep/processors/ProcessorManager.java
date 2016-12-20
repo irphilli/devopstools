@@ -1,6 +1,7 @@
 package com.technojeeves.zipgrep.processors;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -28,12 +29,7 @@ import com.technojeeves.zipgrep.logging.LoggingManager;
 public class ProcessorManager {
     private final static String VALID_ARCHIVE_EXTENSIONS_LIST = "/resources/valid.archive.extensions.txt";
 
-    // Off user.home
-    private final static String USER_VALID_ARCHIVE_EXTENSIONS_LIST = ".zipgrep/valid.archive.extensions.txt";
-    private final static String PROCESSING_CLASSES_FILE = "/resources/entry.processors.properties";
-
-    // Off user.home
-    private final static String USER_PROCESSING_CLASSES_FILE = ".zipgrep/entry.processors.properties";
+    private final static String PROCESSING_CLASSES_FILE = "/tmp/entry.processors.properties";
 
     // Use the root logger
     private Logger log = Logger.getLogger("");
@@ -44,6 +40,8 @@ public class ProcessorManager {
     private Set<String> validArchiveExtensions;
     private Map<String, IProcessor> processorsMap;
     private PrintWriter writer;
+
+    private IProcessor defaultProcessor = new SimpleTextProcessor();
 
     public ProcessorManager() {}
 
@@ -65,35 +63,40 @@ public class ProcessorManager {
      *
      */
     protected void loadEntryProcessors() {
-
-        // Load valid extensions list
-        if (doDebug) {
-            log.fine(String.format("Loading valid processors from %s", PROCESSING_CLASSES_FILE));
-        }
-
-        Properties processorsProps = new Properties();
-
-        try (InputStream in = getClass().getResourceAsStream(PROCESSING_CLASSES_FILE)) {
-            processorsProps.load(in);
-
-            // Show what processors are mapped if debug on
-            for (Map.Entry e : processorsProps.entrySet()) {
-                String extension = e.getKey().toString();
-                String className = e.getValue().toString();
-                IProcessor processor = processorsMap.get(extension);
-
-                if (processor == null) {
-                    processorsMap.put(extension, (IProcessor) Class.forName(className).newInstance());
-                }
-
-                if (doDebug) {
-                    log.fine(String.format("%s processor is %s", extension, className));
-                }
+        File processingClasses = new File(PROCESSING_CLASSES_FILE);
+        if (processingClasses.exists()) {
+            // Load valid extensions list
+            if (doDebug) {
+                log.fine(String.format("Loading valid processors from %s", PROCESSING_CLASSES_FILE));
             }
 
-            // TODO load user mappings
-        } catch (Exception e) {
-            log.log(Level.SEVERE, e.getMessage(), e);
+            Properties processorsProps = new Properties();
+
+            try (InputStream in = new FileInputStream(PROCESSING_CLASSES_FILE)) {
+                processorsProps.load(in);
+
+                // Show what processors are mapped if debug on
+                for (Map.Entry e : processorsProps.entrySet()) {
+                    String extension = e.getKey().toString();
+                    String className = e.getValue().toString();
+                    IProcessor processor = processorsMap.get(extension);
+
+                    if (processor == null) {
+                        processorsMap.put(extension, (IProcessor) Class.forName(className).newInstance());
+                    }
+
+                    if (doDebug) {
+                        log.fine(String.format("%s processor is %s", extension, className));
+                    }
+                }
+            } catch (Exception e) {
+                log.log(Level.SEVERE, e.getMessage(), e);
+            }
+        }
+        else {
+            if (doDebug) {
+                log.fine("All extensions using default processor");
+            }
         }
     }
 
@@ -131,8 +134,14 @@ public class ProcessorManager {
             log.fine("ProcessorManager processing entry " + entryName);
         }
 
-        String extension = ProcessorManager.getExtension(entryName);
-        IProcessor processor = processorsMap.get(extension);
+        IProcessor processor = null;
+        if (processorsMap.isEmpty()) {
+            processor = defaultProcessor;
+        }
+        else {
+            String extension = ProcessorManager.getExtension(entryName);
+            processor = processorsMap.get(extension);
+        }
 
         if (processor != null) {
             processor.setWriter(this.writer);
