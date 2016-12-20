@@ -1,0 +1,128 @@
+<project default="compile">
+    <property environment="env"/>
+    <property name="source.dir" value="src" />
+    <property name="resource.dir" value="resources" />
+    <property name="lib.dir" value="lib" />
+    <property name="bin.dir" value="bin" />
+    <property name="bak.dir" value="${env.TT}" />
+    <property name="zip.file" value="zipgrep-proj-bak.zip"/>
+    <property name="main.class" value="com.technojeeves.zipgrep.ZipGrep" />
+    <property name="jar.file" value="zipgrep.jar" />
+    <path id="cp">
+	<fileset dir="${lib.dir}">
+	    <include name="**/*.jar" />
+	</fileset>
+	<pathelement location="${bin.dir}" />
+	<pathelement location="." />
+    </path>
+    <!-- Need to do the depends for when we run outside Ant after compiling with it -->
+    <target name="compile" depends="copy-resources">
+	<!--<property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter" />-->
+	<javac srcdir="${source.dir}"
+	    destdir="${bin.dir}"
+	    classpathref="cp"
+	    debug="on"
+	    source="1.7"
+	    target="1.7"
+	    nowarn="on"
+	    includes="**/*.java"
+	    listfiles="yes"
+	    >
+	    <compilerarg line="-Xlint:unchecked"/>
+	</javac>
+    </target>
+
+    <target name="copy-resources">
+	<copy todir="${bin.dir}">
+	    <fileset dir="${user.dir}">
+		<include name="resources/**"/>
+	    </fileset>
+	</copy>
+    </target>
+
+
+    <target name="javadoc">
+	<javadoc
+	    destdir="docs/api"
+	    author="true"
+	    version="true"
+	    use="true"
+	    windowtitle="ZipGrep">
+
+	    <packageset dir="src" defaultexcludes="yes">
+		<include name="com/**"/>
+	    </packageset>
+
+	    <doctitle><![CDATA[<h1>ZipGrep</h1>]]></doctitle>
+	    <bottom><![CDATA[<i>Copyright &#169; 2016 Charles Johnson, Technojeeves. All Rights Reserved.</i>]]></bottom>
+	</javadoc>
+
+    </target>
+    <target name="clean">
+	<delete includeemptydirs="true">
+	    <fileset dir="${bin.dir}">
+		<include name="**/*" />
+	    </fileset>
+	</delete>
+    </target>
+
+    <target name="run" depends="compile, copy-resources">
+	<java classname="${main.class}"
+	    fork="true"
+	    classpathref="cp">
+	    <arg value="${args}" />
+	    <!--<jvmarg value="-verbose:class"/>-->
+	    <!--
+		<arg value="${repos.home}" />
+		<jvmarg value="-Duser.timezone=Europe/London"/>
+		-->
+	</java>
+    </target>
+    <target name="sign">
+	<signjar description="Sign the jars for JWS - IDE's seems to be broken"
+	    keystore="${user.home}/.keystore"
+	    storepass="a1b2g3d4e"
+	    alias="business">
+	    <path>
+		<!--<fileset dir="." includes="**/*.jar" />-->
+		<fileset dir="${lib.dir}" includes="dist.jar" />
+	    </path>                     
+	</signjar>
+    </target>
+
+    <target name="jar" depends="compile" description="Build JAR file for main sources.">
+	<jar jarfile="${user.dir}/${jar.file}" compress="true">
+	    <manifest>
+		<attribute name="Main-Class" value="${main.class}"/>
+	    </manifest>
+	    <fileset dir="${bin.dir}"/>
+	    <fileset dir="." includes="src/**/*.java"/>
+	</jar>
+    </target>
+
+    <target name="bak" depends="clean" description="Back up all apart from classes">
+	<echo message="Backing up ${user.dir} to ${bak.dir}/${zip.file}"/>
+	<zip destfile="${bak.dir}/${zip.file}">
+	    <!-- Make sure .git gets in -->
+	    <fileset defaultexcludes="no" dir="${user.dir}">
+		<include name="**/*"/>
+		<exclude name="**/*.swp"/>
+	    </fileset>
+	</zip>
+    </target>
+
+    <target name="ee-dist" depends="clean" description="Back up all apart from classes">
+	<property name="ee.dist.file" value="/tmp/ee-dist.zip"/>
+	<echo message="Backing up to ${ee.dist.file}"/>
+	<zip destfile="${ee.dist.file}">
+	    <!-- Make sure .git gets in -->
+	    <fileset defaultexcludes="no" dir="${user.dir}">
+		<include name="**/*"/>
+		<exclude name="**/*.swp"/>
+		<exclude name="**/*.zip"/>
+		<exclude name="**/*.jar"/>
+		<exclude name="**/run"/>
+	    </fileset>
+	</zip>
+    </target>
+</project>
