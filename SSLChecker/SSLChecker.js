@@ -110,7 +110,8 @@ function getCertInfo(host, rawCertificateInfo) {
       cert.from = months[from.getUTCMonth()] + " " + from.getUTCDate() + ", " + from.getUTCFullYear();
       cert.to = months[to.getUTCMonth()] + " " + to.getUTCDate() + ", " + to.getUTCFullYear();
       cert.subject = currentCert.subject;
-      cert.issuer = currentCert.issuer;
+      if (currentCert != currentCert.issuerCertificate)
+         cert.issuer = currentCert.issuer;
       cert.pem = pemtools(currentCert.raw, "CERTIFICATE").pem
       cert.fingerprint = currentCert.fingerprint;
       cert.serialNumber = currentCert.serialNumber.replace(/..\B/g, '$&:');
@@ -190,15 +191,20 @@ function checkSSL(host, port, callback) {
       });
    });
 
-   var socket = tls.connect(port, host, function() {
+   var options = {
+      host: host,
+      port: port,
+      servername: host
+   };
+   var socket = tls.connect(options, function() {
       result.certificateInfo = getCertInfo(host, socket.getPeerCertificate(true));
       socket.end();
       completedAttrs += attrs.https;
       if (completedAttrs == allAttrs)
          callback(null, result);
    });
-   socket.on("error", function() {
-      if (!error) {
+   socket.on("error", function(err) {
+      if (!error && !result.certificateInfo) {
          error = true;
          callback("Could not connect to " + host + ":" + port);
       }
@@ -208,7 +214,7 @@ function checkSSL(host, port, callback) {
 /*
 var event = {
 //   host: "wrong.host.badssl.com"
-   host: "www.experts-exchange.com"
+//   host: "www.experts-exchange.com"
 //   host: "community.spiceworks.com"
 //   host: "fancyssl.hboeck.de"
 //   host: "expired.badssl.com"
