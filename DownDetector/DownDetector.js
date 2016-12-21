@@ -47,14 +47,14 @@ exports.handler = function(event, context, callback) {
             "Bad status code (" + statusCode + ")";
 
          result = {
-            host: urlInfo.protocol + "://" + urlInfo.host,
+            host: urlInfo.protocol + "//" + urlInfo.host,
             up: false,
             reason: reason,
          };
       }
       else {
          result = {
-            host: urlInfo.protocol + "://" + urlInfo.host,
+            host: urlInfo.protocol + "//" + urlInfo.host,
             up: true,
             statusCode: statusCode
          };
@@ -65,7 +65,7 @@ exports.handler = function(event, context, callback) {
       var result;
       if (err.syscall == "getaddrinfo") {
          result = {
-            host: urlInfo.protocol + "://" + urlInfo.host,
+            host: urlInfo.protocol + "//" + urlInfo.host,
             up: false,
             reason: "Could not resolve domain",
             hint: "Double check that domain is typed correctly"
@@ -73,7 +73,7 @@ exports.handler = function(event, context, callback) {
       }
       else {
          result = {
-            host: urlInfo.protocol + "://" + urlInfo.host,
+            host: urlInfo.protocol + "//" + urlInfo.host,
             up: false,
             reason: err.syscall + " failed with code " + err.code
          };

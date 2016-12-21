@@ -185,6 +185,7 @@ function grep(file, pattern, extensions, callback) {
    });
 }
 
+/*
 var event = {
    bucket: "filedb.dev.redsrci.com",
    file: "ee-dist.zip",
@@ -197,3 +198,4 @@ exports.handler(event, null, function(err, result) {
    console.log(err);
    console.log(result);
 });
+*/
