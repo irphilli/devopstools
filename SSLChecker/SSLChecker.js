@@ -55,6 +55,11 @@ exports.handler = function(event, context, callback) {
       host = event.host;
       port = 443;
    }
+   if (host.trim().length == 0) {
+      callback("Invalid host");
+      return;
+   }
+
    checkSSL(host, port, callback);
 };
 
@@ -170,7 +175,7 @@ function checkSSL(host, port, callback) {
       }
 
       parseString(stdout, function (err, res) {
-         if (err) {
+         if (err || res.document.ssltest == undefined) {
             if (!error) {
                error = true;
                callback("Could not connect to " + host + ":" + port);
@@ -222,6 +227,7 @@ var event = {
 //   host: "incomplete-chain.badssl.com"
 //   host: "untrusted-root.badssl.com"
 //   host: "revoked.badssl.com"
+//   host: "qqq"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
