@@ -78,6 +78,7 @@ function calculateV6(address, callback) {
    callback(null, result);
 }
 
+/*
 var event = {
    address: "2001:0db8:85a3::8a2e:0370:7334/64"
 //   address: "2001:0db8:85a3::8a2e:0370:7334"
@@ -86,3 +87,4 @@ exports.handler(event, null, function(err, result) {
    console.log(err);
    console.log(result);
 });
+*/

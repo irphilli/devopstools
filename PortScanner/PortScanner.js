@@ -94,6 +94,7 @@ function compare(a, b) {
    return a.port - b.port;
 }
 
+/*
 var event = {
 //   port: "80",
    host: "www.experts-exchange.com"
@@ -102,3 +103,4 @@ exports.handler(event, null, function(err, result) {
    console.log(err);
    console.log(result);
 });
+*/
