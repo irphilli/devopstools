@@ -2,6 +2,8 @@ var http = require("http");
 var https = require("https");
 var url = require('url');
 
+var ua = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36";
+
 var statusCodes = {
    400: "Bad Request",
    401: "Unauthorized",
@@ -20,7 +22,6 @@ exports.handler = function(event, context, callback) {
       event.host = "http://" + event.host;
 
    var urlInfo = url.parse(event.host);
-   console.log(urlInfo);
    if (urlInfo.host == null || urlInfo.host == '')
    {
       callback("Invalid host");
@@ -34,7 +35,8 @@ exports.handler = function(event, context, callback) {
 
    var options = {
       host: urlInfo.host,
-      port: (urlInfo.protocol == "http:") ? 80 : 443
+      port: (urlInfo.protocol == "http:") ? 80 : 443,
+      headers: {'User-Agent': ua}
    };
    var connector = (urlInfo.protocol == "http:") ? http : https;
 
@@ -86,10 +88,11 @@ exports.handler = function(event, context, callback) {
 /*
 var event = {
 //   host: "<alert>script('test');</alert>"
-   host: "a"
+//   host: "a"
 //   host: "a.com/test.html"
 //   host: "https://www.experts-exchange.com"
 //   host: "http://experts-exchange-437318971.us-east-1.elb.amazonaws.com"
+   host: "stackoverflow.com"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
