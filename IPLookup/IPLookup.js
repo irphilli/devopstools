@@ -4,6 +4,7 @@ var geoip = require("geoip2");
 var ip = require("ip");
 var dns = require("dns");
 var parseDomain = require("parse-domain");
+var escapeHtml = require('escape-html');
 
 var bucket = "ittools.redsrci.com";
 var db = "GeoIP2-City.mmdb";
@@ -28,7 +29,7 @@ exports.handler = function(event, context, callback) {
    else {
       dns.lookup(host, function(err, ip) {
          if (err) {
-            callback("Could not resolve " + host);
+            callback("Could not resolve " + escapeHtml(host));
          }
          else {
             runIpLookup(host, ip, callback);
@@ -112,9 +113,10 @@ var event = {
 //   host: "98.139.183.24"
 //   host: "127.0.0.1"
 //   host: "10.10.0.1"
-   host: "experts-exchange.com"
+//   host: "experts-exchange.com"
 //   host: "a"
 //   host: "2607:f8b0:4005:804::200e"
+   host: "<script>alert('test');</script>"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);

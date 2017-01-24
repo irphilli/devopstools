@@ -6,6 +6,7 @@ var execSync = require("child_process").execSync;
 var pemtools = require('pemtools');
 var fs = require('fs');
 var parseString = require('xml2js').parseString;
+var escapeHtml = require('escape-html');
 
 var cacertFile = "/etc/ssl/certs/ca-bundle.crt";
 
@@ -100,8 +101,7 @@ function getCertInfo(host, rawCertificateInfo) {
    var now = Date.now();
    var versionRegEx = /Version: ([0-9]+)/;
    var signatureRegEx = /Signature Algorithm: ([0-9a-z\-]+)/i;
-   while (true)
-   {
+   while (true) {
       var cert = {};
 
       var from = new Date(currentCert.valid_from);
@@ -122,8 +122,7 @@ function getCertInfo(host, rawCertificateInfo) {
       cert.serialNumber = currentCert.serialNumber.replace(/..\B/g, '$&:');
       certs.push(cert);
 
-      try
-      {
+      try {
          var stdout = execSync("echo \"" + cert.pem + "\" | openssl x509 -noout -text").toString();
          var versionMatch = stdout.match(versionRegEx);
          if (versionMatch) {
@@ -169,7 +168,7 @@ function checkSSL(host, port, callback) {
       if (err) {
          if (!error) {
             error = true;
-            callback("Could not connect to " + host + ":" + port);
+            callback("Could not connect to " + escapeHtml(host) + ":" + port);
          }
          return;
       }
@@ -178,7 +177,7 @@ function checkSSL(host, port, callback) {
          if (err || res.document.ssltest == undefined) {
             if (!error) {
                error = true;
-               callback("Could not connect to " + host + ":" + port);
+               callback("Could not connect to " + escapeHtml(host) + ":" + port);
             }
             return;
          }
@@ -211,7 +210,7 @@ function checkSSL(host, port, callback) {
    socket.on("error", function(err) {
       if (!error && !result.certificateInfo) {
          error = true;
-         callback("Could not connect to " + host + ":" + port);
+         callback("Could not connect to " + escapeHtml(host) + ":" + port);
       }
    });
 };
@@ -228,6 +227,7 @@ var event = {
 //   host: "untrusted-root.badssl.com"
 //   host: "revoked.badssl.com"
 //   host: "qqq"
+//   host: "<script>alert('test');</script>"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
