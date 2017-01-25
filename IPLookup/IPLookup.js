@@ -97,9 +97,15 @@ function runIpLookup(hostname, lookupIp, callback) {
    });
 
    whois.lookup(lookupIp, {"follow": 2}, function (err, data) {
-      var regexp = /Organization: +(.+)/;
-      var found = data.match(regexp);
-      result.organization = (found) ? found[1] : null;
+      var regexps = {
+         organization: /Organization: +(.+)/,
+         abuseContact: /OrgAbuseEmail: +(.+)/,
+         techContact:  /OrgTechEmail: +(.+)/
+      };
+      for (var key in regexps) {
+         var found = data.match(regexps[key]);
+         result[key] = (found) ? found[1] : null;
+      }
       if (runCallback)
          callback(null, result);
       else
@@ -113,10 +119,10 @@ var event = {
 //   host: "98.139.183.24"
 //   host: "127.0.0.1"
 //   host: "10.10.0.1"
-//   host: "experts-exchange.com"
+   host: "experts-exchange.com"
 //   host: "a"
 //   host: "2607:f8b0:4005:804::200e"
-   host: "<script>alert('test');</script>"
+//   host: "<script>alert('test');</script>"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
