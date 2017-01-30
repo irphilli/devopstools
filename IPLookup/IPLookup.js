@@ -1,13 +1,9 @@
-var AWS = require("aws-sdk");
 var whois = require("whois");
 var geoip = require("geoip2");
 var ip = require("ip");
 var dns = require("dns");
 var parseDomain = require("parse-domain");
 var escapeHtml = require('escape-html');
-
-var bucket = "ittools.redsrci.com";
-var db = "GeoIP2-City.mmdb";
 
 exports.handler = function(event, context, callback) {
    var host = event.host;
@@ -61,39 +57,21 @@ function runIpLookup(hostname, lookupIp, callback) {
       return;
    }
 
-   var s3 = new AWS.S3();
-   var params = {
-      Bucket: bucket,
-      Key: db
-   };
-   var file = require('fs').createWriteStream('/tmp/' + db);
-   var stream = s3.getObject(params).createReadStream().pipe(file);
-
-   stream.on("error", function() {
-      console.log("Could not look up IP");
+   geoip.init(); 
+   geoip.lookupSimple(lookupIp, function (err, data) {
+      if (!err) {
+         result.location = "";
+         if (data.city)
+            result.location = data.city + ", ";
+         if (data.subdivision)
+            result.location += data.subdivision + ", ";
+         result.location += data.country;
+      }
+      
       if (runCallback)
          callback(null, result);
       else
          runCallback = true;
-   });
-
-   stream.on("finish", function() {
-      geoip.init("/tmp/" + db); 
-      geoip.lookupSimple(lookupIp, function (err, data) {
-         if (!err) {
-            result.location = "";
-            if (data.city)
-               result.location = data.city + ", ";
-            if (data.subdivision)
-               result.location += data.subdivision + ", ";
-            result.location += data.country;
-         }
-         
-         if (runCallback)
-            callback(null, result);
-         else
-            runCallback = true;
-      });
    });
 
    whois.lookup(lookupIp, {"follow": 2}, function (err, data) {
