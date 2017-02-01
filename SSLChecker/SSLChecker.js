@@ -174,7 +174,7 @@ function checkSSL(host, port, callback) {
       }
 
       parseString(stdout, function (err, res) {
-         if (err || res.document.ssltest == undefined) {
+         if (err || res.document.ssltest == undefined || res.document.ssltest.legnth == 0 || res.document.ssltest[0].cipher == undefined) {
             if (!error) {
                error = true;
                callback("Could not connect to " + escapeHtml(host) + ":" + port);
@@ -228,6 +228,7 @@ var event = {
 //   host: "revoked.badssl.com"
 //   host: "qqq"
 //   host: "<script>alert('test');</script>"
+//   host: "www.nu.nl"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
