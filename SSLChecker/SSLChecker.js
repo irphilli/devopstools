@@ -7,6 +7,7 @@ var pemtools = require('pemtools');
 var fs = require('fs');
 var parseString = require('xml2js').parseString;
 var escapeHtml = require('escape-html');
+var ps = require("portscanner");
 
 var cacertFile = "/etc/ssl/certs/ca-bundle.crt";
 
@@ -61,7 +62,13 @@ exports.handler = function(event, context, callback) {
       return;
    }
 
-   checkSSL(host, port, callback);
+   ps.checkPortStatus(port, host, function (err, status) {
+      if (err || status != "open") {
+         callback("Could not connect to " + escapeHtml(host) + ":" + port);
+         return;
+      }
+      checkSSL(host, port, callback);
+   });
 };
 
 function getCertInfo(host, rawCertificateInfo) {
@@ -229,6 +236,8 @@ var event = {
 //   host: "qqq"
 //   host: "<script>alert('test');</script>"
 //   host: "www.nu.nl"
+   host: "www.nu"
+//   host: "carol.ns.cloudflare.com"
 };
 exports.handler(event, null, function(err, result) {
    console.log(err);
