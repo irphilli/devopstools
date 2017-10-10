@@ -1,7 +1,7 @@
 var exec = require("child_process").exec;
 
 exports.handler = function(event, context, callback) { 
-   exec("./ssllabs-scan " + event.host, function(err, stdout, stderr) {
+   exec("./ssllabs-scan -ignore-mismatch " + event.host, function(err, stdout, stderr) {
       if (err) {
          callback("Scan of " + event.host + " failed");
          return;
