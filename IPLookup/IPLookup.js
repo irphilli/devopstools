@@ -1,9 +1,9 @@
-var whois = require("whois");
-var geoip = require("geoip2");
-var ip = require("ip");
-var dns = require("dns");
-var parseDomain = require("parse-domain");
-var escapeHtml = require('escape-html');
+const whois = require("whois");
+const geoip = require("geoip2");
+const ip = require("ip");
+const dns = require("dns");
+const parseDomain = require("parse-domain");
+const escapeHtml = require('escape-html');
 
 exports.handler = function(event, context, callback) {
    var host = event.host;

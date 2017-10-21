@@ -1,29 +1,20 @@
+// Scanning for 'bad' SSL, so this is OK for once!
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-var tls = require("tls");
-var exec = require("child_process").exec;
-var execSync = require("child_process").execSync;
-var pemtools = require('pemtools');
-var fs = require('fs');
-var parseString = require('xml2js').parseString;
-var escapeHtml = require('escape-html');
-var ps = require("portscanner");
+const tls = require("tls");
+const exec = require("child_process").exec;
+const execSync = require("child_process").execSync;
+const pemtools = require('pemtools');
+const fs = require('fs');
+const parseString = require('xml2js').parseString;
+const escapeHtml = require('escape-html');
+const ps = require("portscanner");
 
-var cacertFile = "/etc/ssl/certs/ca-bundle.crt";
+const cacertFile = "/etc/ssl/certs/ca-bundle.crt";
 
-var attrs = {
-   cert: 1,
-   https: 2
-};
+const portMax = 65535;
 
-var allAttrs = 0;
-for (var key in attrs) {
-   allAttrs += attrs[key];
-}
-
-var portMax = 65535;
-
-var months = [
+const months = [
    "January",
    "February",
    "March",
@@ -38,7 +29,17 @@ var months = [
    "December"
 ];
 
-var sslscan = "./sslscan --no-fallback --no-renegotiation --no-compression --no-heartbleed --xml=-";
+const sslscan = "./sslscan --no-fallback --no-renegotiation --no-compression --no-heartbleed --xml=-";
+
+const attrs = {
+   cert: 1,
+   https: 2
+};
+
+var allAttrs = 0;
+for (var key in attrs) {
+   allAttrs += attrs[key];
+}
 
 exports.handler = function(event, context, callback) {
    var host;
@@ -104,10 +105,10 @@ function getCertInfo(host, rawCertificateInfo) {
 
    var certs = [];
 
+   const now = Date.now();
+   const versionRegEx = /Version: ([0-9]+)/;
+   const signatureRegEx = /Signature Algorithm: ([0-9a-z\-]+)/i;
    var currentCert = rawCertificateInfo;
-   var now = Date.now();
-   var versionRegEx = /Version: ([0-9]+)/;
-   var signatureRegEx = /Signature Algorithm: ([0-9a-z\-]+)/i;
    while (true) {
       var cert = {};
 
@@ -225,9 +226,7 @@ function checkSSL(host, port, callback) {
 /*
 var event = {
 //   host: "wrong.host.badssl.com"
-//   host: "www.experts-exchange.com"
-//   host: "community.spiceworks.com"
-//   host: "fancyssl.hboeck.de"
+   host: "www.experts-exchange.com"
 //   host: "expired.badssl.com"
 //   host: "self-signed.badssl.com"
 //   host: "incomplete-chain.badssl.com"
@@ -236,7 +235,7 @@ var event = {
 //   host: "qqq"
 //   host: "<script>alert('test');</script>"
 //   host: "www.nu.nl"
-   host: "www.nu"
+//   host: "www.nu"
 //   host: "carol.ns.cloudflare.com"
 };
 exports.handler(event, null, function(err, result) {

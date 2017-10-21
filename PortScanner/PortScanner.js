@@ -1,10 +1,10 @@
-var pn = require("port-numbers");
-var ps = require("portscanner");
-var dns = require("dns");
-var ip = require("ip");
+const pn = require("port-numbers");
+const ps = require("portscanner");
+const dns = require("dns");
+const ip = require("ip");
 
-var portMax = 65535;
-var defaults = [
+const portMax = 65535;
+const defaults = [
    21,
    22,
    23,

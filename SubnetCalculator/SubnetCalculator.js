@@ -1,7 +1,7 @@
-var calc = require( 'ip-subnet-calculator' );
-var Address6 = require("ip-address").Address6;
-var Address4 = require("ip-address").Address4;
-var BigInteger = require('jsbn').BigInteger;
+const calc = require( 'ip-subnet-calculator' );
+const Address6 = require("ip-address").Address6;
+const Address4 = require("ip-address").Address4;
+const BigInteger = require('jsbn').BigInteger;
 
 exports.handler = function(event, context, callback) {
    var address;
@@ -27,15 +27,15 @@ exports.handler = function(event, context, callback) {
 }
 
 function calculateV4(address, callback) {
-   var ip = address.addressMinusSuffix;
-   var prefixSize = address.subnetMask;
+   const ip = address.addressMinusSuffix;
+   const prefixSize = address.subnetMask;
 
    if (prefixSize === 0) {
       callback("Bad netmask");
       return;
    }
 
-   var ipInfo = calc.calculateSubnetMask(ip, prefixSize);
+   const ipInfo = calc.calculateSubnetMask(ip, prefixSize);
    if (ipInfo == null) {
       callback("Bad IP or Netmask");
       return;
@@ -43,10 +43,10 @@ function calculateV4(address, callback) {
 
    var numberOfHosts = ipInfo.ipHigh - ipInfo.ipLow - 1;
    if (numberOfHosts < 0) numberOfHosts = 0;
-   var hostMin = (numberOfHosts > 0) ? calc.toString(ipInfo.ipLow + 1) : "N/A";
-   var hostMax = (numberOfHosts > 0) ? calc.toString(ipInfo.ipHigh - 1) : "N/A";
+   const hostMin = (numberOfHosts > 0) ? calc.toString(ipInfo.ipLow + 1) : "N/A";
+   const hostMax = (numberOfHosts > 0) ? calc.toString(ipInfo.ipHigh - 1) : "N/A";
 
-   var result = {
+   callback(null,{
       ipv4: true,
       ip: ip,
       netmask: ipInfo.prefixMaskStr,
@@ -57,16 +57,14 @@ function calculateV4(address, callback) {
       firstHost: hostMin,
       lastHost: hostMax,
       numHosts: numberOfHosts
-   };
-
-   callback(null, result);
+   });
 }
 
 function calculateV6(address, callback) {
    var numberOfHosts = address.endAddress().getBits().subtract(address.startAddress().getBits());
    numberOfHosts = numberOfHosts.add(new BigInteger('1')).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-   var result = {
+   callback(null,{
       ipv4: false,
       expanded: address.canonicalForm(),
       condensed: address.correctForm(),
@@ -74,8 +72,7 @@ function calculateV6(address, callback) {
       firstHost: address.startAddress().canonicalForm(),
       lastHost: address.endAddress().canonicalForm(),
       numHosts: numberOfHosts
-   };
-   callback(null, result);
+   });
 }
 
 /*
