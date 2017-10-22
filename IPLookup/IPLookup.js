@@ -1,95 +1,95 @@
-const whois = require("whois");
-const geoip = require("geoip2");
-const ip = require("ip");
-const dns = require("dns");
-const parseDomain = require("parse-domain");
+const whois = require('whois');
+const geoip = require('geoip2');
+const ip = require('ip');
+const dns = require('dns');
+const parseDomain = require('parse-domain');
 const escapeHtml = require('escape-html');
 
 exports.handler = function(event, context, callback) {
-   var host = event.host;
+    var host = event.host;
 
-   if (ip.isV4Format(host) || ip.isV6Format(host)) {
-      try {
-         dns.reverse(host, function(err, hostname) {
-            if (err)
-               hostname = null;
-            if (hostname != null)
-               hostname = hostname[0];
-            runIpLookup(hostname, host, callback);
-         });
-      }
-      catch (err) {
-         runIpLookup(null, host, callback);
-      }
-   }
-   else {
-      dns.lookup(host, function(err, ip) {
-         if (err) {
-            callback("Could not resolve " + escapeHtml(host));
-         }
-         else {
-            runIpLookup(host, ip, callback);
-         }
-      });
-   }
-}
+    if (ip.isV4Format(host) || ip.isV6Format(host)) {
+        try {
+            dns.reverse(host, function(err, hostname) {
+                if (err)
+                    hostname = null;
+                if (hostname != null)
+                    hostname = hostname[0];
+                runIpLookup(hostname, host, callback);
+            });
+        }
+        catch (err) {
+            runIpLookup(null, host, callback);
+        }
+    }
+    else {
+        dns.lookup(host, function(err, ip) {
+            if (err) {
+                callback('Could not resolve ' + escapeHtml(host));
+            }
+            else {
+                runIpLookup(host, ip, callback);
+            }
+        });
+    }
+};
 
 function runIpLookup(hostname, lookupIp, callback) {
-   var result = {
-      hostname: hostname,
-      ip: lookupIp,
-      domain: null,
-      location: null,
-      organization: null,
-      private: false
-   };
-   if (hostname != null) {
-      var domainInfo = parseDomain(hostname);
-      if (domainInfo != null)
-         result.domain = domainInfo.domain + "." + domainInfo.tld;
-   }
+    var result = {
+        hostname: hostname,
+        ip: lookupIp,
+        domain: null,
+        location: null,
+        organization: null,
+        private: false
+    };
+    if (hostname != null) {
+        var domainInfo = parseDomain(hostname);
+        if (domainInfo != null)
+            result.domain = domainInfo.domain + '.' + domainInfo.tld;
+    }
 
-   var runCallback = false;
+    var runCallback = false;
 
-   if (ip.isPrivate(lookupIp)) {
-      result.private = true;
-      callback(null, result);
-      return;
-   }
+    if (ip.isPrivate(lookupIp)) {
+        result.private = true;
+        callback(null, result);
+        return;
+    }
 
-   geoip.init(); 
-   geoip.lookupSimple(lookupIp, function (err, data) {
-      if (!err) {
-         result.location = "";
-         if (data.city)
-            result.location = data.city + ", ";
-         if (data.subdivision)
-            result.location += data.subdivision + ", ";
-         result.location += data.country;
-      }
+    geoip.init(); 
+    geoip.lookupSimple(lookupIp, function (err, data) {
+        if (!err) {
+            result.location = '';
+            if (data.city)
+                result.location = data.city + ', ';
+            if (data.subdivision)
+                result.location += data.subdivision + ', ';
+            result.location += data.country;
+        }
       
-      if (runCallback)
-         callback(null, result);
-      else
-         runCallback = true;
-   });
+        if (runCallback)
+            callback(null, result);
+        else
+            runCallback = true;
+    });
 
-   whois.lookup(lookupIp, {"follow": 2}, function (err, data) {
-      var regexps = {
-         organization: /Organization: +(.+)/,
-         abuseContact: /OrgAbuseEmail: +(.+)/,
-         techContact:  /OrgTechEmail: +(.+)/
-      };
-      for (var key in regexps) {
-         var found = data.match(regexps[key]);
-         result[key] = (found) ? found[1] : null;
-      }
-      if (runCallback)
-         callback(null, result);
-      else
-         runCallback = true;
-   });
-};
+    whois.lookup(lookupIp, {'follow': 2}, function (err, data) {
+        var regexps = {
+            organization: /Organization: +(.+)/,
+            abuseContact: /OrgAbuseEmail: +(.+)/,
+            techContact:  /OrgTechEmail: +(.+)/
+        };
+        for (var key in regexps) {
+            var found = data.match(regexps[key]);
+            result[key] = (found) ? found[1] : null;
+        }
+        if (runCallback)
+            callback(null, result);
+        else
+            runCallback = true;
+    });
+}
 
 /*
 var event = {
